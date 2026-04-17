@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Homelab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0c0c0e;
+    --surface:   #131316;
+    --surface2:  #1a1a1f;
+    --border:    rgba(255,255,255,0.07);
+    --border2:   rgba(255,255,255,0.12);
+    --text:      #e8e8ec;
+    --muted:     #6b6b7a;
+    --accent:    #6d6afe;
+    --accent2:   #4ade80;
+    --warn:      #fb923c;
+    --danger:    #f87171;
+    --mono:      'DM Mono', monospace;
+    --sans:      'Instrument Sans', sans-serif;
+    --r:         10px;
+    --r2:        6px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Layout ── */
+  .shell {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 32px 0 40px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 40px;
+    animation: fadeDown 0.5s ease both;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: grid; place-items: center;
+  }
+
+  .logo-icon svg { width: 18px; height: 18px; stroke: white; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  h1 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .tagline {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: var(--mono);
+    margin-top: 1px;
+  }
+
+  /* Token-Input */
+  .auth-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .token-input {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--r2);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    padding: 7px 12px;
+    width: 200px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .token-input:focus { border-color: var(--accent); }
+  .token-input::placeholder { color: var(--muted); }
+
+  .btn {
+    background: var(--accent);
+    border: none;
+    border-radius: var(--r2);
+    color: white;
+    cursor: pointer;
+    font-family: var(--sans);
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 7px 14px;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn.ghost {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+  .btn.ghost:hover { border-color: var(--border2); color: var(--text); opacity: 1; }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    display: inline-block;
+    margin-right: 6px;
+    transition: background 0.3s;
+  }
+  .status-dot.ok { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+  .status-dot.err { background: var(--danger); }
+
+  /* ── Section Label ── */
+  .section-label {
+    font-size: 0.68rem;
+    font-family: var(--mono);
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Grid ── */
+  .grid { display: grid; gap: 14px; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+  @media (max-width: 720px) {
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  }
+  @media (min-width: 721px) and (max-width: 900px) {
+    .grid-3, .grid-4 { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 20px;
+    transition: border-color 0.2s;
+    animation: fadeUp 0.4s ease both;
+  }
+  .card:hover { border-color: var(--border2); }
+
+  /* Service Card */
+  .service-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .svc-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .svc-icon {
+    width: 32px; height: 32px;
+    background: var(--surface2);
+    border-radius: var(--r2);
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .svc-icon svg { width: 15px; height: 15px; stroke: var(--muted); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .svc-name { font-size: 0.88rem; font-weight: 500; }
+  .svc-url { font-size: 0.72rem; color: var(--muted); font-family: var(--mono); margin-top: 2px; word-break: break-all; }
+
+  .badge {
+    font-size: 0.65rem;
+    font-family: var(--mono);
+    padding: 2px 7px;
+    border-radius: 20px;
+    flex-shrink: 0;
+  }
+  .badge.up   { background: rgba(74,222,128,0.12); color: var(--accent2); }
+  .badge.down { background: rgba(248,113,113,0.12); color: var(--danger); }
+  .badge.degraded { background: rgba(251,146,60,0.12); color: var(--warn); }
+  .badge.unknown  { background: rgba(107,107,122,0.15); color: var(--muted); }
+  .badge.checking { background: rgba(109,106,254,0.12); color: var(--accent); }
+
+  .svc-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .latency { font-size: 0.72rem; font-family: var(--mono); color: var(--muted); }
+
+  /* Metric Card */
+  .metric-card { display: flex; flex-direction: column; gap: 6px; }
+  .metric-val {
+    font-size: 1.8rem;
+    font-family: var(--mono);
+    font-weight: 300;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  .metric-val .unit { font-size: 0.9rem; color: var(--muted); }
+  .metric-label { font-size: 0.75rem; color: var(--muted); }
+
+  /* Progress bar */
+  .progress-wrap { background: var(--surface2); border-radius: 2px; height: 3px; margin-top: 10px; overflow: hidden; }
+  .progress-bar  { height: 100%; border-radius: 2px; transition: width 0.6s ease; background: var(--accent); }
+  .progress-bar.warn   { background: var(--warn); }
+  .progress-bar.danger { background: var(--danger); }
+
+  /* GPU Card */
+  .gpu-card { grid-column: 1 / -1; }
+  .gpu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-top: 14px; }
+  .gpu-metric { display: flex; flex-direction: column; gap: 4px; }
+  .gpu-metric-label { font-size: 0.7rem; color: var(--muted); font-family: var(--mono); }
+  .gpu-metric-val   { font-size: 1.1rem; font-family: var(--mono); font-weight: 500; }
+
+  /* Audit Table */
+  .audit-wrap { overflow-x: auto; }
+  .audit-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    font-family: var(--mono);
+  }
+  .audit-table th {
+    text-align: left;
+    color: var(--muted);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0 12px 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .audit-table td { padding: 8px 12px 8px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .audit-table tr:last-child td { border-bottom: none; }
+  .audit-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .event-badge { font-size: 0.65rem; padding: 2px 7px; border-radius: 20px; white-space: nowrap; }
+  .event-AUTH_OK    { background: rgba(74,222,128,0.12); color: var(--accent2); }
+  .event-AUTH_FAIL  { background: rgba(248,113,113,0.12); color: var(--danger); }
+  .event-RATE_LIMIT { background: rgba(251,146,60,0.12); color: var(--warn); }
+  .event-WOL        { background: rgba(109,106,254,0.12); color: var(--accent); }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 12px 18px;
+    font-size: 0.82rem;
+    transform: translateY(20px);
+    opacity: 0;
+    transition: all 0.25s;
+    z-index: 999;
+    pointer-events: none;
+    max-width: 300px;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.success { border-color: rgba(74,222,128,0.3); }
+  #toast.error   { border-color: rgba(248,113,113,0.3); }
+
+  /* ── Sections spacing ── */
+  .section { margin-bottom: 40px; }
+
+  /* ── Skeleton loader ── */
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface) 25%, var(--surface2) 50%, var(--surface) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+    height: 14px;
+  }
+
+  /* ── Refresh indicator ── */
+  .refresh-info { font-size: 0.7rem; color: var(--muted); font-family: var(--mono); }
+
+  /* ── Animations ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  .spinning { animation: spin 1s linear infinite; display: inline-block; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      </div>
+      <div>
+        <h1>Homelab</h1>
+        <div class="tagline"><span class="status-dot" id="conn-dot"></span><span id="conn-label">nicht verbunden</span></div>
+      </div>
+    </div>
+    <div class="auth-row">
+      <input type="password" class="token-input" id="token-input" placeholder="API Token" autocomplete="off">
+      <button class="btn" onclick="connect()">Verbinden</button>
+      <span class="refresh-info" id="refresh-info"></span>
+    </div>
+  </header>
+
+  <!-- Metrics Row -->
+  <div class="section" id="metrics-section" style="display:none">
+    <div class="section-label">System</div>
+    <div class="grid grid-4" id="metrics-grid">
+      <!-- filled by JS -->
+    </div>
+  </div>
+
+  <!-- GPU Section -->
+  <div class="section" id="gpu-section" style="display:none">
+    <div class="section-label">GPU · LLM Server</div>
+    <div class="card gpu-card" id="gpu-card">
+      <div class="gpu-grid" id="gpu-grid"><!-- filled by JS --></div>
+    </div>
+  </div>
+
+  <!-- Services -->
+  <div class="section" id="services-section" style="display:none">
+    <div class="section-label">Services</div>
+    <div class="grid grid-3" id="services-grid">
+      <!-- filled by JS -->
+    </div>
+  </div>
+
+  <!-- Audit -->
+  <div class="section" id="audit-section" style="display:none">
+    <div class="section-label">Audit Log</div>
+    <div class="card">
+      <div class="audit-wrap">
+        <table class="audit-table" id="audit-table">
+          <thead>
+            <tr>
+              <th>Zeit</th>
+              <th>Event</th>
+              <th>IP</th>
+              <th>Pfad</th>
+            </tr>
+          </thead>
+          <tbody id="audit-body"><!-- filled by JS --></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ── Config ─────────────────────────────────────────────────────────────────
+const API_BASE = '';  // Gleiche Origin
+let token = localStorage.getItem('hl_token') || '';
+let refreshTimer = null;
+const REFRESH_INTERVAL = 30_000;
+
+// ── Icons ──────────────────────────────────────────────────────────────────
+const ICONS = {
+  server: `<svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>`,
+  monitor: `<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
+  cpu:     `<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>`,
+  zap:     `<svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+  globe:   `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
+};
+
+// ── Token laden ──────────────────────────────────────────────────────────────
+if (token) {
+  document.getElementById('token-input').value = token;
+  connect();
+}
+
+// ── API ──────────────────────────────────────────────────────────────────────
+async function apiFetch(path) {
+  const r = await fetch(API_BASE + path, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return r.json();
+}
+
+// ── Connect ──────────────────────────────────────────────────────────────────
+async function connect() {
+  token = document.getElementById('token-input').value.trim();
+  if (!token) { showToast('Bitte Token eingeben', 'error'); return; }
+
+  try {
+    await apiFetch('/health');
+    localStorage.setItem('hl_token', token);
+    setConnected(true);
+    loadAll();
+    startRefresh();
+  } catch (e) {
+    setConnected(false);
+    showToast('Verbindung fehlgeschlagen – Token prüfen', 'error');
+  }
+}
+
+function setConnected(ok) {
+  const dot = document.getElementById('conn-dot');
+  const lbl = document.getElementById('conn-label');
+  dot.className = 'status-dot ' + (ok ? 'ok' : 'err');
+  lbl.textContent = ok ? 'verbunden' : 'nicht verbunden';
+}
+
+function startRefresh() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  let countdown = REFRESH_INTERVAL / 1000;
+  const info = document.getElementById('refresh-info');
+  info.textContent = `↻ in ${countdown}s`;
+  refreshTimer = setInterval(() => {
+    countdown--;
+    if (countdown <= 0) {
+      countdown = REFRESH_INTERVAL / 1000;
+      loadAll();
+    }
+    info.textContent = `↻ in ${countdown}s`;
+  }, 1000);
+}
+
+// ── Load all ─────────────────────────────────────────────────────────────────
+async function loadAll() {
+  await Promise.allSettled([
+    loadServices(),
+    loadMetrics(),
+    loadGpu(),
+    loadAudit(),
+  ]);
+}
+
+// ── Services ─────────────────────────────────────────────────────────────────
+async function loadServices() {
+  try {
+    const data = await apiFetch('/api/status');
+    renderServices(data.services);
+    document.getElementById('services-section').style.display = '';
+  } catch {}
+}
+
+function renderServices(services) {
+  const grid = document.getElementById('services-grid');
+  grid.innerHTML = services.map((svc, i) => `
+    <div class="card service-card" style="animation-delay:${i * 0.06}s">
+      <div class="svc-head">
+        <div style="display:flex;gap:10px;align-items:flex-start;min-width:0">
+          <div class="svc-icon">${ICONS[svc.icon] || ICONS.server}</div>
+          <div style="min-width:0">
+            <div class="svc-name">${esc(svc.label)}</div>
+            <div class="svc-url">${esc(svc.url || '—')}</div>
+          </div>
+        </div>
+        <span class="badge ${svc.status}">${svc.status}</span>
+      </div>
+      <div class="svc-footer">
+        <span class="latency">${svc.latency_ms != null ? svc.latency_ms + ' ms' : '—'}</span>
+        ${svc.wol ? `<button class="btn ghost" onclick="sendWol('${esc(svc.name)}')">⏻ Wake</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Metrics ──────────────────────────────────────────────────────────────────
+async function loadMetrics() {
+  try {
+    const data = await apiFetch('/api/metrics');
+    if (!data.metrics?.length) return;
+    renderMetrics(data.metrics);
+    document.getElementById('metrics-section').style.display = '';
+  } catch {}
+}
+
+function renderMetrics(hosts) {
+  const grid = document.getElementById('metrics-grid');
+  const cards = [];
+  for (const host of hosts) {
+    const m = host.metrics;
+    const cpuIdle = m['node_cpu_seconds_total'] ?? null;
+    const memAvail = m['node_memory_MemAvailable_bytes'];
+    const memTotal = m['node_memory_MemTotal_bytes'];
+    const memPct = (memAvail && memTotal) ? Math.round((1 - memAvail / memTotal) * 100) : null;
+
+    cards.push(metricCard(host.host.toUpperCase(), memPct != null ? memPct + '%' : '—', 'RAM', memPct, 'GB'));
+  }
+  grid.innerHTML = cards.join('');
+}
+
+function metricCard(host, val, label, pct, unit) {
+  const barClass = pct > 85 ? 'danger' : pct > 70 ? 'warn' : '';
+  return `
+    <div class="card metric-card">
+      <div class="metric-label">${host} · ${label}</div>
+      <div class="metric-val">${val}</div>
+      ${pct != null ? `
+        <div class="progress-wrap">
+          <div class="progress-bar ${barClass}" style="width:${pct}%"></div>
+        </div>` : ''}
+    </div>`;
+}
+
+// ── GPU ──────────────────────────────────────────────────────────────────────
+async function loadGpu() {
+  try {
+    const data = await apiFetch('/api/gpu');
+    if (!data.gpu?.length || data.gpu[0].status !== 'ok') return;
+    renderGpu(data.gpu[0]);
+    document.getElementById('gpu-section').style.display = '';
+  } catch {}
+}
+
+function renderGpu(gpu) {
+  const m = gpu.metrics;
+  const interesting = [
+    ['Auslastung', findMetric(m, 'utilization', 'gpu'), '%'],
+    ['VRAM Nutzung', findMetric(m, 'memory_used'), 'MB'],
+    ['VRAM Gesamt', findMetric(m, 'memory_total'), 'MB'],
+    ['Temperatur', findMetric(m, 'temperature'), '°C'],
+    ['Power Draw', findMetric(m, 'power_draw'), 'W'],
+  ].filter(([, v]) => v != null);
+
+  document.getElementById('gpu-grid').innerHTML = interesting.map(([label, val, unit]) => `
+    <div class="gpu-metric">
+      <div class="gpu-metric-label">${label}</div>
+      <div class="gpu-metric-val">${Math.round(val)}<span style="font-size:.75rem;color:var(--muted)"> ${unit}</span></div>
+    </div>
+  `).join('');
+}
+
+function findMetric(m, ...keywords) {
+  const key = Object.keys(m).find(k => keywords.every(kw => k.toLowerCase().includes(kw)));
+  return key ? m[key] : null;
+}
+
+// ── Audit ────────────────────────────────────────────────────────────────────
+async function loadAudit() {
+  try {
+    const data = await apiFetch('/api/audit?limit=20');
+    renderAudit(data.entries);
+    document.getElementById('audit-section').style.display = '';
+  } catch {}
+}
+
+function renderAudit(entries) {
+  const body = document.getElementById('audit-body');
+  if (!entries.length) { body.innerHTML = '<tr><td colspan="4" style="color:var(--muted)">Keine Einträge</td></tr>'; return; }
+  body.innerHTML = entries.map(e => `
+    <tr>
+      <td style="white-space:nowrap">${fmtTime(e.ts)}</td>
+      <td><span class="event-badge event-${e.event}">${e.event}</span></td>
+      <td>${esc(e.ip)}</td>
+      <td style="color:var(--muted)">${esc(e.path)}</td>
+    </tr>
+  `).join('');
+}
+
+// ── WoL ──────────────────────────────────────────────────────────────────────
+async function sendWol(name) {
+  try {
+    const data = await fetch(`${API_BASE}/api/wol/${name}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+    }).then(r => r.json());
+    showToast(data.result?.success ? `✓ Magic Packet gesendet an ${name}` : `Fehler: ${data.result?.error}`, data.result?.success ? 'success' : 'error');
+  } catch (e) {
+    showToast('WoL fehlgeschlagen', 'error');
+  }
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtTime(iso) {
+  try {
+    return new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  } catch { return iso; }
+}
+
+let toastTimer = null;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ''; }, 3500);
+}
+</script>
+</body>
+</html>

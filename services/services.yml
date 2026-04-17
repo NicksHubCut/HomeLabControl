@@ -1,0 +1,23 @@
+services:
+  mini-pc:
+    label: "Mini PC"
+    url: "http://mini-pc.local:80"
+    health_url: "http://mini-pc.local:80/health"
+    icon: "monitor"
+    tags: ["homeserver", "linux"]
+    mac: ""  # optional: für WoL
+
+  llm-server:
+    label: "LLM Server"
+    url: "http://llm-pc.local:11434"
+    health_url: "http://llm-pc.local:11434/api/version"
+    icon: "cpu"
+    tags: ["ai", "ollama"]
+    mac: "AA:BB:CC:DD:EE:FF"  # Wake-on-LAN MAC
+
+  ollama:
+    label: "Ollama API"
+    url: "http://llm-pc.local:11434"
+    health_url: "http://llm-pc.local:11434/api/version"
+    icon: "zap"
+    tags: ["ai", "api"]
