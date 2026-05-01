@@ -202,6 +202,14 @@
   .badge.unknown  { background: rgba(107,107,122,0.15); color: var(--muted); }
   .badge.checking { background: rgba(109,106,254,0.12); color: var(--accent); }
 
+  .btn.danger {
+    background: transparent;
+    border: 1px solid rgba(248,113,113,0.3);
+    color: var(--danger);
+    font-size: 0.75rem;
+  }
+  .btn.danger:hover { background: rgba(248,113,113,0.1); opacity: 1; }
+
   .svc-footer {
     display: flex;
     align-items: center;
@@ -476,7 +484,10 @@ function renderServices(services) {
       </div>
       <div class="svc-footer">
         <span class="latency">${svc.latency_ms != null ? svc.latency_ms + ' ms' : '—'}</span>
-        ${svc.wol ? `<button class="btn ghost" onclick="sendWol('${esc(svc.name)}')">⏻ Wake</button>` : ''}
+        <div style="display:flex;gap:6px">
+          ${svc.wol ? `<button class="btn ghost" onclick="sendWol('${esc(svc.name)}')">⏻ Wake</button>` : ''}
+          ${svc.shutdown ? `<button class="btn danger" onclick="sendShutdown('${esc(svc.name)}', '${esc(svc.label)}')">⏹ Shutdown</button>` : ''}
+        </div>
       </div>
     </div>
   `).join('');
@@ -584,6 +595,18 @@ async function sendWol(name) {
     showToast(data.result?.success ? `✓ Magic Packet gesendet an ${name}` : `Fehler: ${data.result?.error}`, data.result?.success ? 'success' : 'error');
   } catch (e) {
     showToast('WoL fehlgeschlagen', 'error');
+  }
+}
+
+// ── Shutdown ──────────────────────────────────────────────────────────────────
+async function sendShutdown(name, label) {
+  if (!confirm(`${label} wirklich herunterfahren?`)) return;
+  try {
+    const data = await fetch(`${WOL_BASE}/api/shutdown/${name}`, { method: 'POST' }).then(r => r.json());
+    showToast(data.success ? `✓ ${label} wird heruntergefahren` : `Fehler: ${data.error}`, data.success ? 'success' : 'error');
+    if (data.success) setTimeout(() => loadAll(), 5000);
+  } catch {
+    showToast('Shutdown fehlgeschlagen', 'error');
   }
 }
 

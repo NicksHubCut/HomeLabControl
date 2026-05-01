@@ -76,7 +76,7 @@ function getMac(string $name): ?string {
 }
 
 // ── Mini-PC Proxy ────────────────────────────────────────────────────────────
-function proxyToMiniPc(string $path): never {
+function proxyToMiniPc(string $path, string $method = 'GET'): never {
     $base  = $GLOBALS['env']['MINIPC_API'] ?? '';
     $token = $GLOBALS['env']['MINIPC_TOKEN'] ?? '';
     if (!$base) {
@@ -89,9 +89,11 @@ function proxyToMiniPc(string $path): never {
         $headers .= "X-Api-Token: $token\r\n";
     }
     $ctx  = stream_context_create(['http' => [
+        'method'        => $method,
         'timeout'       => 8,
         'ignore_errors' => true,
         'header'        => $headers,
+        'content'       => '',
     ]]);
     $body = @file_get_contents($url, false, $ctx);
     if ($body === false) {
@@ -115,6 +117,11 @@ if ($path === '/health' || $path === '/api/health') {
 $proxyPaths = ['/api/status', '/api/metrics', '/api/gpu', '/api/audit', '/api/services', '/api/minipc'];
 if (in_array($path, $proxyPaths, true) && $method === 'GET') {
     proxyToMiniPc($path);
+}
+
+// Proxy: POST /api/shutdown/{name}
+if (preg_match('#^/api/shutdown/(.+)$#', $path) && $method === 'POST') {
+    proxyToMiniPc($path, 'POST');
 }
 
 // WoL: POST /api/wol/{name}

@@ -38,7 +38,7 @@ nano .env
 ```
 
 ### 4. services.json anpassen
-LLM_MAC eintragen in services/services.json
+MAC-Adresse und `shutdown_cmd` in `services/services.json` eintragen.
 
 ### 5. Als Systemd-Service einrichten
 ```bash
@@ -74,7 +74,40 @@ LOCAL_API_TOKEN=<generierter_wert>
 # Denselben Wert in All-Inkl .env als MINIPC_TOKEN eintragen
 ```
 
-### 8. Firewall: Port 8080 nur für Tailscale öffnen
+### 8. Shutdown-Berechtigung einrichten
+Der API-Prozess braucht `sudo shutdown` ohne Passwort.
+Nie `/etc/sudoers` direkt bearbeiten — stattdessen Drop-in-Datei:
+```bash
+echo 'earl ALL=(ALL) NOPASSWD: /sbin/shutdown' | sudo tee /etc/sudoers.d/homelab-shutdown
+sudo chmod 440 /etc/sudoers.d/homelab-shutdown
+
+# Syntax prüfen — muss "parsed OK" ausgeben:
+sudo visudo -c -f /etc/sudoers.d/homelab-shutdown
+
+# Testen (ohne tatsächlich zu stoppen):
+sudo shutdown -c   # falls versehentlich gestartet
+```
+> `earl` durch den tatsächlichen Service-User ersetzen (steht in homelab-api.service unter `User=`).
+
+### 9. LLM-Server Shutdown via SSH einrichten
+Der Mini-PC schickt den Shutdown-Befehl per SSH an den LLM-Server.
+```bash
+# SSH-Key für den Service-User anlegen (falls noch nicht vorhanden):
+sudo -u earl ssh-keygen -t ed25519 -N "" -f /home/earl/.ssh/id_ed25519
+
+# Public Key auf den LLM-Server kopieren:
+sudo -u earl ssh-copy-id earl@192.168.0.73
+
+# Auf dem LLM-Server ebenfalls sudoers Drop-in anlegen:
+echo 'earl ALL=(ALL) NOPASSWD: /sbin/shutdown' | sudo tee /etc/sudoers.d/homelab-shutdown
+sudo chmod 440 /etc/sudoers.d/homelab-shutdown
+
+# Testen:
+sudo -u earl ssh earl@192.168.0.73 echo "SSH ok"
+```
+Danach `shutdown_cmd` in `services/services.json` auf den richtigen User/Key-Pfad anpassen.
+
+### 10. Firewall: Port 8080 nur für Tailscale öffnen
 ```bash
 sudo ufw allow in on tailscale0 to any port 8080
 sudo ufw deny 8080
@@ -102,11 +135,12 @@ cd /www/htdocs/w015c898/homelab-control.com
 htpasswd -c .htpasswd deinuser
 ```
 
-### 4. .env anlegen
+### 3. .env anlegen
 ```bash
 cp .env.example .env
 nano .env
-# MINIPC_API=http://100.x.x.x:8080   ← Tailscale-IP des Mini-PC
+# MINIPC_API=https://HOSTNAME.TAILNET.ts.net   ← Tailscale Funnel URL
+# MINIPC_TOKEN=<selber Wert wie LOCAL_API_TOKEN auf Mini-PC>
 # MINI_PC_MAC=AA:BB:CC:DD:EE:FF
 # LLM_SERVER_MAC=AA:BB:CC:DD:EE:FF
 ```
@@ -151,5 +185,7 @@ cat /sys/class/net/enp5s0/address   # Interface-Name anpassen
 | API nicht erreichbar | `sudo systemctl status homelab-api` prüfen |
 | CORS-Fehler im Browser | Origin in api.php (Mini-PC) prüfen |
 | WoL schlägt fehl | MAC in .env (All-Inkl) prüfen |
+| Shutdown schlägt fehl (Mini-PC) | `sudo visudo -c -f /etc/sudoers.d/homelab-shutdown` prüfen |
+| Shutdown schlägt fehl (LLM-Server) | SSH-Key-Auth testen: `sudo -u earl ssh earl@192.168.0.73 echo ok` |
 | Metriken leer | Node Exporter auf beiden Maschinen aktiv? |
 | Port 8080 nicht erreichbar | Firewall: `sudo ufw status` |

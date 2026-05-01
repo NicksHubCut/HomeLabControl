@@ -5,7 +5,8 @@
     "icon": "monitor",
     "tags": ["homeserver", "linux"],
     "mac": "",
-    "self": true
+    "self": true,
+    "shutdown": true
   },
   "llm-server": {
     "label": "LLM Server",
@@ -13,7 +14,9 @@
     "health_url": "http://192.168.0.73:11434/api/version",
     "icon": "cpu",
     "tags": ["ai", "ollama"],
-    "mac": "c8:7f:54:07:5d:c6"
+    "mac": "c8:7f:54:07:5d:c6",
+    "shutdown": true,
+    "shutdown_cmd": "ssh -o StrictHostKeyChecking=no earl@192.168.0.73 sudo shutdown -h now"
   },
   "ollama": {
     "label": "Ollama API",

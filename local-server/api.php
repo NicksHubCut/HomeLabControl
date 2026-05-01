@@ -97,6 +97,7 @@ function checkService(string $name, array $cfg): array {
             'icon'       => $cfg['icon'] ?? 'server',
             'tags'       => $cfg['tags'] ?? [],
             'wol'        => isset($cfg['mac']) && $cfg['mac'] !== '',
+            'shutdown'   => !empty($cfg['shutdown']),
         ];
     }
 
@@ -128,6 +129,7 @@ function checkService(string $name, array $cfg): array {
         'icon'       => $cfg['icon'] ?? 'server',
         'tags'       => $cfg['tags'] ?? [],
         'wol'        => isset($cfg['mac']) && $cfg['mac'] !== '',
+        'shutdown'   => !empty($cfg['shutdown']),
     ];
 }
 
@@ -213,6 +215,32 @@ if ($path === '/api/audit' && $method === 'GET') {
         }
     }
     jsonOut(['entries' => $entries, 'total' => count($entries)]);
+}
+
+// POST /api/shutdown/{name}
+if (preg_match('#^/api/shutdown/(.+)$#', $path, $m) && $method === 'POST') {
+    $name    = strtolower(trim($m[1]));
+    $services = loadServices();
+    $cfg     = $services[$name] ?? null;
+
+    if (!$cfg || empty($cfg['shutdown'])) {
+        jsonOut(['error' => "Shutdown nicht verfügbar für '$name'"], 404);
+    }
+
+    auditLog('SHUTDOWN', $ip, $path, ['service' => $name]);
+
+    if (!empty($cfg['self'])) {
+        exec('sudo /sbin/shutdown -h now > /dev/null 2>&1 &');
+        jsonOut(['success' => true, 'service' => $name]);
+    }
+
+    $cmd = $cfg['shutdown_cmd'] ?? '';
+    if ($cmd === '') {
+        jsonOut(['error' => "shutdown_cmd nicht konfiguriert für '$name'"], 500);
+    }
+
+    exec($cmd . ' > /dev/null 2>&1 &');
+    jsonOut(['success' => true, 'service' => $name]);
 }
 
 jsonOut(['error' => 'Route nicht gefunden: ' . $path], 404);
