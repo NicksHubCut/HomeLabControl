@@ -1,8 +1,7 @@
 <?php
 /**
  * Homelab Control – All-Inkl API
- * Einzige Funktion: Wake-on-LAN
- * Alles andere läuft auf dem Mini-PC
+ * WoL + Proxy zu Mini-PC (HTTP→HTTPS-Brücke für Browser)
  */
 
 declare(strict_types=1);
@@ -76,11 +75,37 @@ function getMac(string $name): ?string {
     return $val !== '' ? $val : null;
 }
 
+// ── Mini-PC Proxy ────────────────────────────────────────────────────────────
+function proxyToMiniPc(string $path): never {
+    $base = $GLOBALS['env']['MINIPC_API'] ?? '';
+    if (!$base) {
+        jsonOut(['error' => 'MINIPC_API nicht konfiguriert'], 503);
+    }
+    $query = $_SERVER['QUERY_STRING'] ?? '';
+    $url   = rtrim($base, '/') . $path . ($query ? '?' . $query : '');
+    $ctx   = stream_context_create(['http' => ['timeout' => 8, 'ignore_errors' => true]]);
+    $body  = @file_get_contents($url, false, $ctx);
+    if ($body === false) {
+        jsonOut(['error' => 'Mini-PC nicht erreichbar'], 503);
+    }
+    preg_match('/HTTP\/\S+ (\d+)/', $http_response_header[0] ?? '', $m);
+    http_response_code((int)($m[1] ?? 200));
+    header('Content-Type: application/json; charset=utf-8');
+    echo $body;
+    exit;
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 
-// Health
+// Health (All-Inkl selbst)
 if ($path === '/health' || $path === '/api/health') {
     jsonOut(['status' => 'ok', 'role' => 'allinkl', 'time' => date('c')]);
+}
+
+// Proxy: Mini-PC GET-Endpunkte
+$proxyPaths = ['/api/status', '/api/metrics', '/api/gpu', '/api/audit', '/api/services', '/api/minipc'];
+if (in_array($path, $proxyPaths, true) && $method === 'GET') {
+    proxyToMiniPc($path);
 }
 
 // WoL: POST /api/wol/{name}
@@ -103,8 +128,4 @@ if (preg_match('#^/api/wol/(.+)$#', $path, $m) && $method === 'POST') {
     jsonOut(['service' => $name, 'result' => $result]);
 }
 
-// Alles andere → 404 mit Hinweis
-jsonOut([
-    'error' => 'Dieser Endpunkt liegt auf dem Mini-PC',
-    'hint'  => 'Nur /api/wol/* ist auf All-Inkl verfügbar',
-], 404);
+jsonOut(['error' => 'Route nicht gefunden'], 404);
