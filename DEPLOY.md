@@ -86,13 +86,7 @@ Per SFTP in den Webroot:
 └── logs/            ← Ordner anlegen
 ```
 
-### 2. index.html: API_BASE setzen
-```javascript
-// Zeile in index.html anpassen:
-const API_BASE = 'http://100.x.x.x:8080';  // Tailscale-IP des Mini-PC
-```
-
-### 3. .htpasswd anlegen (SSH)
+### 2. .htpasswd anlegen (SSH)
 ```bash
 cd /www/htdocs/w015c898/homelab-control.com
 htpasswd -c .htpasswd deinuser
@@ -102,6 +96,7 @@ htpasswd -c .htpasswd deinuser
 ```bash
 cp .env.example .env
 nano .env
+# MINIPC_API=http://100.x.x.x:8080   ← Tailscale-IP des Mini-PC
 # MINI_PC_MAC=AA:BB:CC:DD:EE:FF
 # LLM_SERVER_MAC=AA:BB:CC:DD:EE:FF
 ```
