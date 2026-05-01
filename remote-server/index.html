@@ -388,10 +388,9 @@
 
 <script>
 // ── Config ─────────────────────────────────────────────────────────────────
-// ── Dual-API Konfiguration ────────────────────────────────────────────────────
-// WoL läuft auf All-Inkl, alles andere auf Mini-PC
-const WOL_BASE  = '';                              // All-Inkl (gleiche Origin)
-const API_BASE  = 'http://100.89.63.56:8080';      // ← Mini-PC Tailscale-IP eintragen!
+// Alles über All-Inkl (same origin) — api.php proxied Mini-PC-Anfragen
+const WOL_BASE  = '';
+const API_BASE  = '';
 let refreshTimer = null;
 const REFRESH_INTERVAL = 30_000;
 
@@ -420,8 +419,8 @@ function setConnected(ok) {
   lbl.textContent = ok ? 'verbunden' : 'nicht verbunden';
 }
 
-// Direkt beim Laden verbinden
-setConnected(true);
+// Verbindungsstatus erst nach erstem erfolgreichen API-Call setzen
+setConnected(false);
 
 function startRefresh() {
   if (refreshTimer) clearInterval(refreshTimer);
@@ -454,7 +453,11 @@ async function loadServices() {
     const data = await apiFetch('/api/status');
     renderServices(data.services);
     document.getElementById('services-section').style.display = '';
-  } catch {}
+    setConnected(true);
+  } catch {
+    setConnected(false);
+    document.getElementById('services-section').style.display = 'none';
+  }
 }
 
 function renderServices(services) {
