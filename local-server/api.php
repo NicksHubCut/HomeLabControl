@@ -86,6 +86,20 @@ function loadServices(): array {
 
 // ── HTTP-Check ────────────────────────────────────────────────────────────────
 function checkService(string $name, array $cfg): array {
+    // Self-check: if this is the local machine, the API running means it's up
+    if (!empty($cfg['self'])) {
+        return [
+            'name'       => $name,
+            'label'      => $cfg['label'] ?? $name,
+            'url'        => $cfg['url'] ?? null,
+            'status'     => 'up',
+            'latency_ms' => 0,
+            'icon'       => $cfg['icon'] ?? 'server',
+            'tags'       => $cfg['tags'] ?? [],
+            'wol'        => isset($cfg['mac']) && $cfg['mac'] !== '',
+        ];
+    }
+
     $url    = $cfg['health_url'] ?? $cfg['url'] ?? null;
     $status = 'unknown';
     $latency = null;

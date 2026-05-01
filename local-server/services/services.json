@@ -2,10 +2,10 @@
   "mini-pc": {
     "label": "Mini PC",
     "url": "http://192.168.0.43",
-    "health_url": "http://192.168.0.43:8080/health",
     "icon": "monitor",
     "tags": ["homeserver", "linux"],
-    "mac": ""
+    "mac": "",
+    "self": true
   },
   "llm-server": {
     "label": "LLM Server",
