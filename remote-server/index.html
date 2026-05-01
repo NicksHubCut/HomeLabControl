@@ -333,7 +333,7 @@
     </div>
     <div class="auth-row">
       <span class="refresh-info" id="refresh-info"></span>
-      <button class="btn ghost" onclick="loadAll()">↻ Aktualisieren</button>
+      <button class="btn ghost" onclick="loadAll().then(() => startRefresh())">↻ Aktualisieren</button>
     </div>
   </header>
 
@@ -606,6 +606,9 @@ function showToast(msg, type = '') {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { t.className = ''; }, 3500);
 }
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadAll().then(() => startRefresh());
 </script>
 </body>
 </html>
