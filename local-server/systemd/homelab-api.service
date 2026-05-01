@@ -1,0 +1,18 @@
+[Unit]
+Description=Homelab Control API
+After=network.target tailscaled.service
+
+[Service]
+Type=simple
+User=earl
+WorkingDirectory=/home/earl/homelab-api
+ExecStart=/usr/bin/php -S 0.0.0.0:8080 api.php
+Restart=always
+RestartSec=5
+
+# Logs nach journald
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

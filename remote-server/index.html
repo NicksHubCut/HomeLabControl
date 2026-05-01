@@ -90,21 +90,6 @@
     gap: 8px;
   }
 
-  .token-input {
-    background: var(--surface);
-    border: 1px solid var(--border2);
-    border-radius: var(--r2);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 0.78rem;
-    padding: 7px 12px;
-    width: 200px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .token-input:focus { border-color: var(--accent); }
-  .token-input::placeholder { color: var(--muted); }
-
   .btn {
     background: var(--accent);
     border: none;
@@ -347,9 +332,8 @@
       </div>
     </div>
     <div class="auth-row">
-      <input type="password" class="token-input" id="token-input" placeholder="API Token" autocomplete="off">
-      <button class="btn" onclick="connect()">Verbinden</button>
       <span class="refresh-info" id="refresh-info"></span>
+      <button class="btn ghost" onclick="loadAll()">↻ Aktualisieren</button>
     </div>
   </header>
 
@@ -404,8 +388,10 @@
 
 <script>
 // ── Config ─────────────────────────────────────────────────────────────────
-const API_BASE = '';  // Gleiche Origin
-let token = localStorage.getItem('hl_token') || '';
+// ── Dual-API Konfiguration ────────────────────────────────────────────────────
+// WoL läuft auf All-Inkl, alles andere auf Mini-PC
+const WOL_BASE  = '';                              // All-Inkl (gleiche Origin)
+const API_BASE  = 'http://100.89.63.56:8080';      // ← Mini-PC Tailscale-IP eintragen!
 let refreshTimer = null;
 const REFRESH_INTERVAL = 30_000;
 
@@ -418,36 +404,13 @@ const ICONS = {
   globe:   `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
 };
 
-// ── Token laden ──────────────────────────────────────────────────────────────
-if (token) {
-  document.getElementById('token-input').value = token;
-  connect();
-}
-
 // ── API ──────────────────────────────────────────────────────────────────────
 async function apiFetch(path) {
-  const r = await fetch(API_BASE + path, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
+  // WoL → All-Inkl, alles andere → Mini-PC
+  const base = path.startsWith('/api/wol/') ? WOL_BASE : API_BASE;
+  const r = await fetch(base + path);
   if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
   return r.json();
-}
-
-// ── Connect ──────────────────────────────────────────────────────────────────
-async function connect() {
-  token = document.getElementById('token-input').value.trim();
-  if (!token) { showToast('Bitte Token eingeben', 'error'); return; }
-
-  try {
-    await apiFetch('/health');
-    localStorage.setItem('hl_token', token);
-    setConnected(true);
-    loadAll();
-    startRefresh();
-  } catch (e) {
-    setConnected(false);
-    showToast('Verbindung fehlgeschlagen – Token prüfen', 'error');
-  }
 }
 
 function setConnected(ok) {
@@ -456,6 +419,9 @@ function setConnected(ok) {
   dot.className = 'status-dot ' + (ok ? 'ok' : 'err');
   lbl.textContent = ok ? 'verbunden' : 'nicht verbunden';
 }
+
+// Direkt beim Laden verbinden
+setConnected(true);
 
 function startRefresh() {
   if (refreshTimer) clearInterval(refreshTimer);
@@ -609,9 +575,8 @@ function renderAudit(entries) {
 // ── WoL ──────────────────────────────────────────────────────────────────────
 async function sendWol(name) {
   try {
-    const data = await fetch(`${API_BASE}/api/wol/${name}`, {
+    const data = await fetch(`${WOL_BASE}/api/wol/${name}`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
     }).then(r => r.json());
     showToast(data.result?.success ? `✓ Magic Packet gesendet an ${name}` : `Fehler: ${data.result?.error}`, data.result?.success ? 'success' : 'error');
   } catch (e) {

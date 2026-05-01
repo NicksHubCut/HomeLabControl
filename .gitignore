@@ -1,1 +1,4 @@
 .env
+.htpasswd
+logs/
+*.log

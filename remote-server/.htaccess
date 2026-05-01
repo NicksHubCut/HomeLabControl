@@ -3,6 +3,7 @@ AuthType Basic
 AuthName "Homelab Control"
 AuthUserFile /www/htdocs/w015c898/homelab-control.com/.htpasswd
 Require valid-user
+# homelab:Homelab_55442266!
 
 # ── Routing ───────────────────────────────────────────────────────────────────
 <IfModule mod_rewrite.c>

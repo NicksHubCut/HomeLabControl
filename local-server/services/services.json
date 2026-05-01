@@ -1,0 +1,26 @@
+{
+  "mini-pc": {
+    "label": "Mini PC",
+    "url": "http://192.168.0.43",
+    "health_url": "http://192.168.0.43:8080/health",
+    "icon": "monitor",
+    "tags": ["homeserver", "linux"],
+    "mac": ""
+  },
+  "llm-server": {
+    "label": "LLM Server",
+    "url": "http://192.168.0.73:11434",
+    "health_url": "http://192.168.0.73:11434/api/version",
+    "icon": "cpu",
+    "tags": ["ai", "ollama"],
+    "mac": "c8:7f:54:07:5d:c6"
+  },
+  "ollama": {
+    "label": "Ollama API",
+    "url": "http://192.168.0.73:11434",
+    "health_url": "http://192.168.0.73:11434/api/version",
+    "icon": "zap",
+    "tags": ["ai", "api"],
+    "mac": ""
+  }
+}

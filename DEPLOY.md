@@ -1,121 +1,140 @@
-# Homelab auf All-Inkl deployen
+# Homelab Control – Hybrid Deploy
 
-## Voraussetzungen
-- All-Inkl Hosting mit Python-Unterstützung (Managed Plus oder höher)
-- SSH-Zugang (All-Inkl bietet das ab bestimmten Paketen)
-- Phusion Passenger ist bei All-Inkl aktiv
+## Übersicht
 
----
-
-## 1. Abhängigkeiten installieren
-
-```bash
-# Per SSH einloggen
-ssh DEIN_USERNAME@ssh.ALL-INKL-DOMAIN.de
-
-# Ins Webroot wechseln
-cd /www/htdocs/DEIN_USERNAME/
-
-# Projekt hochladen (oder per SFTP/FTP)
-# Dann Pakete installieren:
-pip3 install --user -r homelab/requirements.txt
 ```
-
-Falls `pip3 install --user` nicht geht:
-```bash
-pip3 install --target=/www/htdocs/DEIN_USERNAME/homelab/vendor -r homelab/requirements.txt
-```
-Dann in `passenger_wsgi.py` ganz oben ergänzen:
-```python
-sys.path.insert(0, str(BASE_DIR / "vendor"))
+All-Inkl:   index.html + api.php (nur WoL)
+Mini-PC:    api.php (Status, Metriken, GPU, Audit) auf Port 8080
 ```
 
 ---
 
-## 2. .htpasswd erstellen (erste Auth-Schicht)
+## Teil 1: Mini-PC einrichten
 
+### 1. PHP installieren
 ```bash
-# Passwort-Datei anlegen (AUSSERHALB des Webroots!)
-htpasswd -c /www/htdocs/DEIN_USERNAME/homelab/.htpasswd dein_benutzername
-# Passwort eingeben → fertig
+sudo apt install php php-cli -y
+php --version   # sollte PHP 8.x zeigen
 ```
 
-Oder online generieren: https://www.htaccesstools.com/htpasswd-generator/
-Dann die Datei manuell anlegen mit dem generierten Hash.
+### 2. API-Verzeichnis anlegen
+```bash
+mkdir -p ~/homelab-api/{services,logs}
+cd ~/homelab-api
+
+# Dateien hierhin kopieren:
+# - api.php
+# - services/services.json
+# - .env.example → .env
+```
+
+### 3. .env befüllen
+```bash
+cp .env.example .env
+nano .env
+# MINIPC_NODE_EXPORTER=192.168.0.43:9100
+# LLM_NODE_EXPORTER=192.168.0.73:9100
+# LLM_GPU_EXPORTER=192.168.0.73:9835
+```
+
+### 4. services.json anpassen
+LLM_MAC eintragen in services/services.json
+
+### 5. Als Systemd-Service einrichten
+```bash
+# homelab-api.service nach /etc/systemd/system/ kopieren
+sudo cp systemd/homelab-api.service /etc/systemd/system/
+
+# DEIN_USERNAME ersetzen
+sudo sed -i "s/DEIN_USERNAME/$USER/g" /etc/systemd/system/homelab-api.service
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now homelab-api
+
+# Testen:
+curl http://localhost:8080/health
+# → {"status":"ok","role":"minipc",...}
+```
+
+### 6. Tailscale-IP herausfinden
+```bash
+tailscale ip -4
+# → z.B. 100.x.x.x
+```
+Diese IP bei All-Inkl -> `index.html` eintragen (API_BASE).
+
+### 7. Firewall: Port 8080 nur für Tailscale öffnen
+```bash
+# Tailscale-Interface ist tailscale0
+sudo ufw allow in on tailscale0 to any port 8080
+sudo ufw deny 8080   # alle anderen blockieren
+```
 
 ---
 
-## 3. .env anlegen
+## Teil 2: All-Inkl einrichten
 
-```bash
-cp homelab/.env.example homelab/.env
-nano homelab/.env   # oder per SFTP bearbeiten
+### 1. Dateien hochladen
+Per SFTP in den Webroot:
+```
+/www/htdocs/w015c898/homelab-control.com/
+├── .htaccess
+├── .htpasswd        ← per SSH anlegen
+├── .env             ← nur MAC-Adressen
+├── api.php          ← nur WoL
+├── index.html       ← UI mit API_BASE angepasst
+└── logs/            ← Ordner anlegen
 ```
 
-Token-Hash generieren:
+### 2. index.html: API_BASE setzen
+```javascript
+// Zeile in index.html anpassen:
+const API_BASE = 'http://100.x.x.x:8080';  // Tailscale-IP des Mini-PC
+```
+
+### 3. .htpasswd anlegen (SSH)
 ```bash
-python3 -c "import hashlib; print(hashlib.sha256(b'DEIN-TOKEN').hexdigest())"
+cd /www/htdocs/w015c898/homelab-control.com
+htpasswd -c .htpasswd deinuser
+```
+
+### 4. .env anlegen
+```bash
+cp .env.example .env
+nano .env
+# MINI_PC_MAC=AA:BB:CC:DD:EE:FF
+# LLM_SERVER_MAC=AA:BB:CC:DD:EE:FF
+```
+
+### 5. logs/ Ordner
+```bash
+mkdir -p logs && chmod 750 logs
 ```
 
 ---
 
-## 4. .htaccess anpassen
-
-In `homelab/.htaccess` diese Zeile anpassen:
-```
-PassengerAppRoot /www/htdocs/DEIN_USERNAME/homelab
-```
-→ Ersetze `DEIN_USERNAME` mit deinem echten All-Inkl-Username.
-
----
-
-## 5. Dateistruktur auf dem Server
-
-```
-/www/htdocs/DEIN_USERNAME/homelab/
-├── .htaccess          ← Passenger + Basic Auth
-├── .htpasswd          ← Basic Auth Passwörter
-├── .env               ← API Token Hash + Hosts
-├── passenger_wsgi.py  ← Einstiegspunkt
-├── requirements.txt
-├── app/
-│   ├── __init__.py
-│   ├── main.py
-│   ├── auth.py
-│   ├── audit.py
-│   ├── executor.py
-│   ├── ratelimit.py
-│   └── registry.py
-├── services/
-│   └── services.yml
-├── logs/              ← wird automatisch erstellt
-└── ui/
-    └── index.html
-```
-
----
-
-## 6. Passenger neu starten
-
-All-Inkl startet Passenger automatisch beim ersten Request.
-Zum manuellen Neustart:
-```bash
-touch /www/htdocs/DEIN_USERNAME/homelab/tmp/restart.txt
-```
-(Ordner `tmp/` anlegen falls nicht vorhanden)
-
----
-
-## 7. Testen
+## Testen
 
 ```bash
-# Health-Check (braucht noch kein Token)
-curl -u htpasswd_user:htpasswd_pass https://DEINE-DOMAIN.de/health
+# 1. Mini-PC API direkt
+curl http://100.x.x.x:8080/health
+curl http://100.x.x.x:8080/api/status
 
-# API mit Token
-curl -u htpasswd_user:htpasswd_pass \
-     -H "Authorization: Bearer DEIN-TOKEN" \
-     https://DEINE-DOMAIN.de/api/status
+# 2. All-Inkl WoL (mit htpasswd)
+curl -u user:pass -X POST https://homelab-control.com/api/wol/llm-server
+
+# 3. UI aufrufen
+# https://homelab-control.com → htpasswd → Dashboard
+```
+
+---
+
+## MACs herausfinden
+```bash
+# Auf dem jeweiligen Rechner:
+ip link show | grep "link/ether"
+# oder
+cat /sys/class/net/enp5s0/address   # Interface-Name anpassen
 ```
 
 ---
@@ -124,20 +143,8 @@ curl -u htpasswd_user:htpasswd_pass \
 
 | Problem | Lösung |
 |---|---|
-| `500 Internal Server Error` | `logs/` Ordner fehlt oder Rechte falsch |
-| `403 Forbidden` | `.htpasswd` Pfad in `.htaccess` prüfen |
-| `401 Unauthorized` | API_TOKEN_HASH in `.env` prüfen |
-| Module nicht gefunden | `pip3 install --user -r requirements.txt` nochmal |
-| Passenger startet nicht | Passenger-Log bei All-Inkl im KAS prüfen |
-
----
-
-## Security-Checkliste
-
-- [x] `.env` ist per `.htaccess` blockiert (`.env`-Muster)
-- [x] `.htpasswd` liegt im Webroot (durch FilesMatch blockiert)
-- [x] API-Token via SHA-256 Hash gespeichert, nie im Klartext
-- [x] Rate Limiting: 30 Requests/Minute pro IP
-- [x] Alle Aktionen werden im Audit-Log erfasst
-- [ ] HTTPS aktivieren (Let's Encrypt im All-Inkl KAS)
-- [ ] `logs/` Ordner außerhalb des Webroots legen (empfohlen)
+| API nicht erreichbar | `sudo systemctl status homelab-api` prüfen |
+| CORS-Fehler im Browser | Origin in api.php (Mini-PC) prüfen |
+| WoL schlägt fehl | MAC in .env (All-Inkl) prüfen |
+| Metriken leer | Node Exporter auf beiden Maschinen aktiv? |
+| Port 8080 nicht erreichbar | Firewall: `sudo ufw status` |
