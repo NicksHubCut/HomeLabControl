@@ -56,18 +56,28 @@ curl http://localhost:8080/health
 # → {"status":"ok","role":"minipc",...}
 ```
 
-### 6. Tailscale-IP herausfinden
+### 6. Tailscale Funnel aktivieren
+All-Inkl ist nicht im Tailscale-Netz → Mini-PC per Funnel öffentlich erreichbar machen:
 ```bash
-tailscale ip -4
-# → z.B. 100.x.x.x
+sudo tailscale funnel --bg 8080
+tailscale funnel status
+# → https://HOSTNAME.TAILNET.ts.net → proxy to 127.0.0.1:8080
 ```
-Diese IP bei All-Inkl -> `index.html` eintragen (API_BASE).
+Diese HTTPS-URL als `MINIPC_API` in All-Inkl `.env` eintragen.
 
-### 7. Firewall: Port 8080 nur für Tailscale öffnen
+### 7. API-Token setzen (Schutz vor unberechtigtem Zugriff)
 ```bash
-# Tailscale-Interface ist tailscale0
+# Zufälliges Token generieren:
+openssl rand -hex 24
+# In local-server/.env eintragen:
+LOCAL_API_TOKEN=<generierter_wert>
+# Denselben Wert in All-Inkl .env als MINIPC_TOKEN eintragen
+```
+
+### 8. Firewall: Port 8080 nur für Tailscale öffnen
+```bash
 sudo ufw allow in on tailscale0 to any port 8080
-sudo ufw deny 8080   # alle anderen blockieren
+sudo ufw deny 8080
 ```
 
 ---

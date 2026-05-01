@@ -77,14 +77,23 @@ function getMac(string $name): ?string {
 
 // ── Mini-PC Proxy ────────────────────────────────────────────────────────────
 function proxyToMiniPc(string $path): never {
-    $base = $GLOBALS['env']['MINIPC_API'] ?? '';
+    $base  = $GLOBALS['env']['MINIPC_API'] ?? '';
+    $token = $GLOBALS['env']['MINIPC_TOKEN'] ?? '';
     if (!$base) {
         jsonOut(['error' => 'MINIPC_API nicht konfiguriert'], 503);
     }
-    $query = $_SERVER['QUERY_STRING'] ?? '';
-    $url   = rtrim($base, '/') . $path . ($query ? '?' . $query : '');
-    $ctx   = stream_context_create(['http' => ['timeout' => 8, 'ignore_errors' => true]]);
-    $body  = @file_get_contents($url, false, $ctx);
+    $query   = $_SERVER['QUERY_STRING'] ?? '';
+    $url     = rtrim($base, '/') . $path . ($query ? '?' . $query : '');
+    $headers = "Accept: application/json\r\n";
+    if ($token !== '') {
+        $headers .= "X-Api-Token: $token\r\n";
+    }
+    $ctx  = stream_context_create(['http' => [
+        'timeout'       => 8,
+        'ignore_errors' => true,
+        'header'        => $headers,
+    ]]);
+    $body = @file_get_contents($url, false, $ctx);
     if ($body === false) {
         jsonOut(['error' => 'Mini-PC nicht erreichbar'], 503);
     }

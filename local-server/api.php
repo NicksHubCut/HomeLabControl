@@ -45,9 +45,21 @@ if (in_array($origin, $allowed_origins, true)) {
     header('Access-Control-Allow-Origin: https://homelab-control.com');
 }
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Headers: Content-Type, X-Api-Token');
 header('Access-Control-Allow-Credentials: true');
 if ($method === 'OPTIONS') { http_response_code(204); exit; }
+
+// ── Token-Schutz (aktiv wenn LOCAL_API_TOKEN gesetzt) ─────────────────────────
+$requiredToken = env('LOCAL_API_TOKEN');
+if ($requiredToken !== '') {
+    $provided = $_SERVER['HTTP_X_API_TOKEN'] ?? '';
+    if (!hash_equals($requiredToken, $provided)) {
+        http_response_code(401);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function jsonOut(mixed $data, int $status = 200): never {
