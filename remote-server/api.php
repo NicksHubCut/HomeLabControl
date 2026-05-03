@@ -124,6 +124,11 @@ if (preg_match('#^/api/shutdown/(.+)$#', $path) && $method === 'POST') {
     proxyToMiniPc($path, 'POST');
 }
 
+// Proxy: LLM service control
+if (str_starts_with($path, '/api/llm/') && in_array($method, ['GET', 'POST'])) {
+    proxyToMiniPc($path, $method);
+}
+
 // WoL: POST /api/wol/{name}
 if (preg_match('#^/api/wol/(.+)$#', $path, $m) && $method === 'POST') {
     $name = strtolower(trim($m[1]));

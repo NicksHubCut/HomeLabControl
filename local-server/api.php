@@ -61,6 +61,37 @@ if ($requiredToken !== '') {
     }
 }
 
+// ── LLM-Server Proxy ─────────────────────────────────────────────────────────
+function proxyToLlm(string $llmPath, string $method = 'GET'): never {
+    $base  = env('LLM_SERVER_API');
+    $token = env('LLM_API_TOKEN');
+    if (!$base) {
+        jsonOut(['error' => 'LLM_SERVER_API nicht konfiguriert'], 503);
+    }
+    $query   = $_SERVER['QUERY_STRING'] ?? '';
+    $url     = rtrim($base, '/') . $llmPath . ($query ? '?' . $query : '');
+    $headers = "Accept: application/json\r\n";
+    if ($token !== '') {
+        $headers .= "X-Api-Token: $token\r\n";
+    }
+    $ctx  = stream_context_create(['http' => [
+        'method'        => $method,
+        'timeout'       => 10,
+        'ignore_errors' => true,
+        'header'        => $headers,
+        'content'       => '',
+    ]]);
+    $body = @file_get_contents($url, false, $ctx);
+    if ($body === false) {
+        jsonOut(['error' => 'LLM-Server nicht erreichbar'], 503);
+    }
+    preg_match('/HTTP\/\S+ (\d+)/', $http_response_header[0] ?? '', $m);
+    http_response_code((int)($m[1] ?? 200));
+    header('Content-Type: application/json; charset=utf-8');
+    echo $body;
+    exit;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function jsonOut(mixed $data, int $status = 200): never {
     http_response_code($status);
@@ -215,6 +246,14 @@ if ($path === '/api/audit' && $method === 'GET') {
         }
     }
     jsonOut(['entries' => $entries, 'total' => count($entries)]);
+}
+
+// GET /api/llm/status  →  LLM-Server /api/status
+// POST /api/llm/service/{name}/start|stop  →  LLM-Server
+if (str_starts_with($path, '/api/llm/') && in_array($method, ['GET', 'POST'])) {
+    $llmPath = '/api' . substr($path, strlen('/api/llm'));  // /api/llm/status → /api/status
+    auditLog('LLM_PROXY', $ip, $path);
+    proxyToLlm($llmPath, $method);
 }
 
 // POST /api/shutdown/{name}

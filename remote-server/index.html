@@ -210,6 +210,14 @@
   }
   .btn.danger:hover { background: rgba(248,113,113,0.1); opacity: 1; }
 
+  .btn.start {
+    background: transparent;
+    border: 1px solid rgba(74,222,128,0.3);
+    color: var(--accent2);
+    font-size: 0.75rem;
+  }
+  .btn.start:hover { background: rgba(74,222,128,0.1); opacity: 1; }
+
   .svc-footer {
     display: flex;
     align-items: center;
@@ -369,6 +377,14 @@
     </div>
   </div>
 
+  <!-- LLM Services -->
+  <div class="section" id="llm-section" style="display:none">
+    <div class="section-label">LLM Server · Services</div>
+    <div class="grid grid-4" id="llm-grid">
+      <!-- filled by JS -->
+    </div>
+  </div>
+
   <!-- Audit -->
   <div class="section" id="audit-section" style="display:none">
     <div class="section-label">Audit Log</div>
@@ -451,6 +467,7 @@ async function loadAll() {
     loadServices(),
     loadMetrics(),
     loadGpu(),
+    loadLlmServices(),
     loadAudit(),
   ]);
 }
@@ -595,6 +612,59 @@ async function sendWol(name) {
     showToast(data.result?.success ? `✓ Magic Packet gesendet an ${name}` : `Fehler: ${data.result?.error}`, data.result?.success ? 'success' : 'error');
   } catch (e) {
     showToast('WoL fehlgeschlagen', 'error');
+  }
+}
+
+// ── LLM Services ─────────────────────────────────────────────────────────────
+async function loadLlmServices() {
+  try {
+    const data = await apiFetch('/api/llm/status');
+    renderLlmServices(data.services);
+    document.getElementById('llm-section').style.display = '';
+  } catch {
+    document.getElementById('llm-section').style.display = 'none';
+  }
+}
+
+function renderLlmServices(services) {
+  const grid = document.getElementById('llm-grid');
+  grid.innerHTML = services.map((svc, i) => `
+    <div class="card service-card" style="animation-delay:${i * 0.06}s">
+      <div class="svc-head">
+        <div style="display:flex;gap:10px;align-items:flex-start;min-width:0">
+          <div class="svc-icon">${ICONS[svc.icon] || ICONS.server}</div>
+          <div style="min-width:0">
+            <div class="svc-name">${esc(svc.label)}</div>
+            <div class="svc-url">${esc(svc.url || '—')}</div>
+          </div>
+        </div>
+        <span class="badge ${svc.status}">${svc.status}</span>
+      </div>
+      <div class="svc-footer">
+        <span></span>
+        <div style="display:flex;gap:6px">
+          ${svc.can_start ? `<button class="btn start" onclick="sendServiceAction('${esc(svc.name)}','start','${esc(svc.label)}')">▶ Start</button>` : ''}
+          ${svc.can_stop  ? `<button class="btn danger" onclick="sendServiceAction('${esc(svc.name)}','stop','${esc(svc.label)}')">■ Stop</button>` : ''}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function sendServiceAction(name, action, label) {
+  if (action === 'stop' && !confirm(`${label} wirklich stoppen?`)) return;
+  try {
+    const data = await fetch(`${WOL_BASE}/api/llm/service/${name}/${action}`, {
+      method: 'POST'
+    }).then(r => r.json());
+    const ok = data.success === true;
+    showToast(
+      ok ? `✓ ${label} wird ${action === 'start' ? 'gestartet' : 'gestoppt'}` : `Fehler: ${data.error}`,
+      ok ? 'success' : 'error'
+    );
+    if (ok) setTimeout(() => loadLlmServices(), 4000);
+  } catch {
+    showToast(`${action} fehlgeschlagen`, 'error');
   }
 }
 
