@@ -93,17 +93,17 @@ sudo shutdown -c   # falls versehentlich gestartet
 Der Mini-PC schickt den Shutdown-Befehl per SSH an den LLM-Server.
 ```bash
 # SSH-Key für den Service-User anlegen (falls noch nicht vorhanden):
-sudo -u earl ssh-keygen -t ed25519 -N "" -f /home/earl/.ssh/id_ed25519
+sudo -u earl ssh-keygen -t ed25519 -N "" -f /home/earl/.ssh/id_llmserver
 
 # Public Key auf den LLM-Server kopieren:
-sudo -u earl ssh-copy-id earl@192.168.0.73
+sudo -u earl ssh-copy-id llm-server-user@192.168.0.73
 
 # Auf dem LLM-Server ebenfalls sudoers Drop-in anlegen:
 echo 'earl ALL=(ALL) NOPASSWD: /sbin/shutdown' | sudo tee /etc/sudoers.d/homelab-shutdown
 sudo chmod 440 /etc/sudoers.d/homelab-shutdown
 
 # Testen:
-sudo -u earl ssh earl@192.168.0.73 echo "SSH ok"
+sudo -u earl ssh llm-server-user@192.168.0.73 echo "SSH ok"
 ```
 Danach `shutdown_cmd` in `services/services.json` auf den richtigen User/Key-Pfad anpassen.
 

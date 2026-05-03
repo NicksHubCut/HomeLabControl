@@ -16,7 +16,7 @@
     "tags": ["ai", "ollama"],
     "mac": "c8:7f:54:07:5d:c6",
     "shutdown": true,
-    "shutdown_cmd": "ssh -o StrictHostKeyChecking=no earl@192.168.0.73 sudo shutdown -h now"
+    "shutdown_cmd": "ssh -o StrictHostKeyChecking=no dude@192.168.0.73 sudo shutdown -h now"
   },
   "ollama": {
     "label": "Ollama API",
