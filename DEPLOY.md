@@ -3,9 +3,12 @@
 ## Übersicht
 
 ```
-All-Inkl:   index.html + api.php (nur WoL)
-Mini-PC:    api.php (Status, Metriken, GPU, Audit) auf Port 8080
+All-Inkl:    index.html + api.php  (WoL + Proxy)        HTTPS
+Mini-PC:     api.php               (Status, Metriken)    :8080  Tailscale Funnel
+LLM-Server:  api.py                (Service-Steuerung)   :8081  lokal via Mini-PC
 ```
+
+Proxy-Kette: Browser → All-Inkl → Mini-PC :8080 → LLM-Server :8081
 
 ---
 
@@ -152,6 +155,64 @@ mkdir -p logs && chmod 750 logs
 
 ---
 
+## Teil 3: LLM-Server einrichten
+
+### 1. Python-Abhängigkeiten installieren
+```bash
+python3 -m venv ~/homelab-llm-api/venv
+~/homelab-llm-api/venv/bin/pip install flask requests
+```
+
+### 2. API-Verzeichnis anlegen
+```bash
+mkdir -p ~/homelab-llm-api
+# Dateien hierhin kopieren:
+# - api.py
+# - services.json
+# - .env.example → .env
+```
+
+### 3. services.json anpassen
+Pfade zu den Start/Stop-Skripten und Ports prüfen:
+```bash
+nano ~/homelab-llm-api/services.json
+# Vaultwarden-Port anpassen (Standard: 8082)
+# AI-Agency stop-Pfad prüfen
+```
+
+### 4. .env befüllen
+```bash
+cp .env.example .env
+nano .env
+# LOCAL_API_TOKEN=<gleicher Wert wie LLM_API_TOKEN auf Mini-PC>
+# PORT=8081
+```
+
+### 5. Als Systemd-Service einrichten
+```bash
+sudo cp systemd/llm-api.service /etc/systemd/system/
+# $USER hier korrekt — systemd expandiert $USER in Service-Dateien nicht!
+sudo sed -i "s/dude/$(whoami)/g" /etc/systemd/system/llm-api.service
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now llm-api
+
+# Testen:
+curl http://localhost:8081/health
+# → {"status":"ok","role":"llmserver",...}
+curl http://localhost:8081/api/status
+```
+
+### 6. Mini-PC .env aktualisieren
+```bash
+nano ~/homelab-api/.env
+# LLM_SERVER_API=http://192.168.0.73:8081
+# LLM_API_TOKEN=<generierter Token>
+sudo systemctl restart homelab-api
+```
+
+---
+
 ## Testen
 
 ```bash
@@ -187,5 +248,7 @@ cat /sys/class/net/enp5s0/address   # Interface-Name anpassen
 | WoL schlägt fehl | MAC in .env (All-Inkl) prüfen |
 | Shutdown schlägt fehl (Mini-PC) | `sudo visudo -c -f /etc/sudoers.d/homelab-shutdown` prüfen |
 | Shutdown schlägt fehl (LLM-Server) | SSH-Key-Auth testen: `sudo -u earl ssh earl@192.168.0.73 echo ok` |
+| LLM Services nicht sichtbar | `curl http://192.168.0.73:8081/health` auf Mini-PC testen |
+| Start/Stop ohne Funktion | journald: `sudo journalctl -u llm-api -f` auf LLM-Server |
 | Metriken leer | Node Exporter auf beiden Maschinen aktiv? |
 | Port 8080 nicht erreichbar | Firewall: `sudo ufw status` |

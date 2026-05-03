@@ -1,0 +1,18 @@
+[Unit]
+Description=LLM Server Control API
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=dude
+WorkingDirectory=/home/dude/homelab-llm-api
+ExecStart=/home/dude/homelab-llm-api/venv/bin/python3 /home/dude/homelab-llm-api/api.py
+Restart=always
+RestartSec=5
+EnvironmentFile=/home/dude/homelab-llm-api/.env
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

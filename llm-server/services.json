@@ -1,0 +1,34 @@
+{
+  "gitlab": {
+    "label": "GitLab",
+    "url": "http://localhost:8080",
+    "icon": "server",
+    "health": { "type": "http", "url": "http://localhost:8080" },
+    "start": { "path": "~/services/localServices/services/start_gitlab.py" },
+    "stop":  { "path": "~/services/localServices/services/stop_gitlab.py" }
+  },
+  "vaultwarden": {
+    "label": "Vaultwarden",
+    "url": "http://localhost:8082",
+    "icon": "lock",
+    "health": { "type": "docker", "container": "vaultwarden" },
+    "start": { "path": "~/services/localServices/services/start_vaultwarden.py" },
+    "stop":  { "path": "~/services/localServices/services/stop_vaultwarden.py" }
+  },
+  "ollama": {
+    "label": "Ollama",
+    "url": "http://localhost:11434",
+    "icon": "zap",
+    "health": { "type": "http", "url": "http://localhost:11434/api/version" },
+    "start": { "path": "~/services/localServices/services/start_ollama.py" },
+    "stop":  { "path": "~/services/localServices/services/stop_ollama.py" }
+  },
+  "ai-agency": {
+    "label": "AI Agency",
+    "url": null,
+    "icon": "cpu",
+    "health": { "type": "docker", "container": "telegram" },
+    "start": { "path": "~/services/localServices/services/start_ai_agency.py" },
+    "stop":  { "path": "~/Projekte/AI-Agency/scripts/stop_ai_agency.py" }
+  }
+}
